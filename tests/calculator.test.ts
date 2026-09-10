@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   calculateBudget,
   createBudgetItem,
@@ -7,6 +7,7 @@ import {
   toMonthlyAmount,
   validateBudgetInput,
 } from '../src/calculator'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../src'
 import type { BudgetInput, BudgetItem } from '../src/types'
 describe('toMonthlyAmount', () => {
   it('should convert weekly to monthly', () => {
@@ -37,6 +38,15 @@ describe('toAnnualAmount', () => {
   })
   it('should return same amount for annually', () => {
     expect(toAnnualAmount(5000, 'annually')).toBe(5000)
+  })
+  it('should convert biweekly, quarterly, and one-time amounts', () => {
+    expect(toAnnualAmount(100, 'biweekly')).toBe(2600)
+    expect(toAnnualAmount(1200, 'quarterly')).toBe(4800)
+    expect(toAnnualAmount(1200, 'one-time')).toBe(1200)
+  })
+  it('should use the default conversion for unknown frequencies', () => {
+    expect(toMonthlyAmount(500, 'unknown' as never)).toBe(500)
+    expect(toAnnualAmount(500, 'unknown' as never)).toBe(6000)
   })
 })
 describe('validateBudgetInput', () => {
@@ -192,6 +202,57 @@ describe('calculateBudget', () => {
     const result = calculateBudget({ items: [] })
     expect(result.success).toBe(false)
   })
+  it('should cover health score bands and recommendation paths', () => {
+    const makeBudget = (expenseAmount: number, isEssential = true): BudgetInput => ({
+      items: [
+        createBudgetItem({ name: 'Income', amount: 100, type: 'income', category: 'salary' }),
+        createBudgetItem({
+          name: 'Expense',
+          amount: expenseAmount,
+          type: 'expense',
+          category: 'housing',
+          isEssential,
+        }),
+      ],
+    })
+    for (const expenseAmount of [0, 80, 85, 90, 95, 110]) {
+      const result = calculateBudget(makeBudget(expenseAmount))
+      expect(result.success).toBe(true)
+    }
+    for (const expenseAmount of [50, 60, 70, 80]) {
+      const result = calculateBudget(makeBudget(expenseAmount))
+      expect(result.success).toBe(true)
+    }
+    const balanced = calculateBudget({
+      items: [
+        createBudgetItem({ name: 'Income', amount: 100, type: 'income', category: 'salary' }),
+        createBudgetItem({
+          name: 'Essential',
+          amount: 70,
+          type: 'expense',
+          category: 'housing',
+          isEssential: true,
+        }),
+        createBudgetItem({
+          name: 'Discretionary',
+          amount: 10,
+          type: 'expense',
+          category: 'entertainment',
+          isEssential: false,
+        }),
+      ],
+      savingsGoalPercent: 20,
+    })
+    expect(balanced.success).toBe(true)
+    if (balanced.success) expect(balanced.data.recommendations).toHaveLength(1)
+    const zeroBudget = calculateBudget({
+      items: [
+        createBudgetItem({ name: 'Income', amount: 0, type: 'income', category: 'salary' }),
+        createBudgetItem({ name: 'Expense', amount: 0, type: 'expense', category: 'food' }),
+      ],
+    })
+    expect(zeroBudget.success).toBe(true)
+  })
 })
 describe('createBudgetItem', () => {
   it('should create item with defaults', () => {
@@ -215,6 +276,24 @@ describe('createBudgetItem', () => {
       category: 'entertainment',
     })
     expect(item.isEssential).toBe(false)
+  })
+  it('should create a fallback id when randomUUID is unavailable', () => {
+    vi.stubGlobal('crypto', {})
+    const item = createBudgetItem({
+      name: 'Fallback',
+      amount: 10,
+      type: 'income',
+      category: 'salary',
+    })
+    expect(item.id).toMatch(/^\d+-[a-z0-9]+$/)
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('public exports', () => {
+  it('exports category configurations', () => {
+    expect(EXPENSE_CATEGORIES.housing.label).toBe('Housing')
+    expect(INCOME_CATEGORIES.salary.label).toBe('Salary / Wages')
   })
 })
 describe('get503020Breakdown', () => {
