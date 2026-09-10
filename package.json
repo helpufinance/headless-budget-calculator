@@ -53,6 +53,7 @@
         "dev": "rolldown -c rolldown.config.ts --watch",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
         "test:watch": "vitest",
         "lint": "oxlint src/*.ts tests/*.ts",
         "lint:fix": "oxlint --fix src/*.ts tests/*.ts",
@@ -63,6 +64,7 @@
     },
     "devDependencies": {
         "@types/node": "^22.0.0",
+        "@vitest/coverage-v8": "^5.0.0",
         "oxfmt": "^0.67.0",
         "oxlint": "^1.82.0",
         "rolldown": "^1.2.8",
