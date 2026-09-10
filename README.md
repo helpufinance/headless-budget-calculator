@@ -6,6 +6,8 @@
 
 # Headless Budget Calculator
 
+[![npm version](https://img.shields.io/npm/v/%40helpu%2Fheadless-budget-calculator?logo=npm)](https://www.npmjs.com/package/@helpu/headless-budget-calculator)
+
 A headless, framework-agnostic budget calculator with income and expense categorization, savings goals, and budget analysis.
 
 ## What is HelpU Finance?
